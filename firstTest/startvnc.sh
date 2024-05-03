@@ -8,6 +8,12 @@ export DISPLAY=:1
 vncserver -kill :1 > /dev/null 2>&1 || true
 rm -rf /tmp/.X1-lock /tmp/.X11-unix/X1 > /dev/null 2>&1 || true
 
+# Starten des dbus-daemon
+eval $(dbus-launch --sh-syntax)
+
+# Exportieren Sie die DBUS-Sitzungsadresse
+export DBUS_SESSION_BUS_ADDRESS
+
 # Initialisieren und starten des VNC-Servers
 vncserver -kill :1
 vncserver -geometry 1280x800 -depth 24 :1

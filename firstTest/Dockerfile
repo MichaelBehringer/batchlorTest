@@ -11,11 +11,13 @@ RUN apt-get update && apt-get install -y \
     tightvncserver \
     xfce4 \
     xfce4-goodies \
-    dbus-x11
+    dbus-x11 \
+    git
 
 # Laden und installieren Sie die Eclipse IDE
 RUN wget https://www.mirrorservice.org/sites/download.eclipse.org/eclipseMirror/technology/epp/downloads/release/2024-03/R/eclipse-jee-2024-03-R-linux-gtk-aarch64.tar.gz -O /tmp/eclipse.tar.gz && \
-    tar -xzf /tmp/eclipse.tar.gz -C /opt
+    tar -xzf /tmp/eclipse.tar.gz -C /opt && \
+    rm /tmp/eclipse.tar.gz
 
 # Setzen Sie ein Passwort für den VNC-Server
 RUN mkdir /root/.vnc
@@ -28,6 +30,10 @@ RUN chmod +x /opt/startvnc.sh
 
 # Exponieren Sie den VNC-Port
 EXPOSE 5901
+
+# git clone
+RUN mkdir /opt/swtProject
+RUN git clone https://github.com/MichaelBehringer/multiplatform-swt.git /opt/swtProject
 
 # Starten Sie den VNC-Server, wenn der Container gestartet wird
 CMD ["/opt/startvnc.sh"]

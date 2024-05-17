@@ -1,11 +1,6 @@
 ARG ALPINE_VERSION=3.19
 
 FROM alpine:${ALPINE_VERSION} AS guacamole-builder
-COPY certs/*.pem /etc/ssl/certs/
-
-RUN cat /etc/ssl/certs/hama-root.pem >> /etc/ssl/certs/ca-certificates.crt \
-    && apk --no-cache add ca-certificates \
-    && update-ca-certificates
 
 RUN apk add --no-cache                \
         autoconf                      \
@@ -95,13 +90,6 @@ ENV USER="oracle" \
     # Use wayland for GTK 
     GDK_BACKEND=wayland
 
-# Add certificates
-COPY certs/* /etc/ssl/certs/ 
-# First we need to be able to add certificates
-RUN cat /etc/ssl/certs/hama-root.pem >> /etc/ssl/certs/ca-certificates.crt \
-    && apk --no-cache add ca-certificates \
-    && update-ca-certificates
-
 RUN apk add -X https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION}/main -u alpine-keys --allow-untrusted
 RUN apk update && apk upgrade
 
@@ -142,12 +130,20 @@ RUN mkdir -p /usr/share/themes/Adwaita-Own/gtk-3.0/
 COPY configs/gtk.css /usr/share/themes/Adwaita-Own/gtk-3.0/gtk.css
 
 RUN apk add firefox
+RUN apk add --no-cache ttf-dejavu ttf-freefont ttf-liberation
+# COPY mozilla.cfg /usr/lib/firefox/mozilla.cfg
+# RUN echo -e 'pref("gfx.xrender.enabled", false);\npref("gfx.canvas.accelerated", false);\npref("layers.acceleration.disabled", true);\npref("security.sandbox.content.level", 0);' > /usr/lib/firefox/defaults/pref/autoconfig.js
 
 RUN echo -e 'pref("gfx.xrender.enabled", false);\r\npref("gfx.canvas.accelerated", false);\r\npref("layers.acceleration.disabled", true);' > /usr/lib/firefox/defaults/pref/autoconfig.js
 
 ENV MOZ_ENABLE_WAYLAND=1 \
     MOZ_ACCELERATED=0 \
     MOZ_WEBRENDER=0
+
+RUN apk add wget
+RUN wget https://www.mirrorservice.org/sites/download.eclipse.org/eclipseMirror/technology/epp/downloads/release/2024-03/R/eclipse-jee-2024-03-R-linux-gtk-aarch64.tar.gz -O /tmp/eclipse.tar.gz && \
+    tar -xzf /tmp/eclipse.tar.gz -C /opt && \
+    rm /tmp/eclipse.tar.gz
 
 USER 1001
 

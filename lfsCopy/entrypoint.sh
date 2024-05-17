@@ -14,6 +14,8 @@ sleep 0.5
 /opt/guacamole/sbin/guacd -b 0.0.0.0 -L debug -f &
 
 # Start a new firefox instance
-# firefox --new-instance &
+#firefox --new-instance &
+/opt/eclipse/eclipse &
 
+while true; do sleep 1000; done
 # /opt/go-lfs/go-lfs

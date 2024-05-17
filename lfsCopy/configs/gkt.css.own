@@ -1,0 +1,39 @@
+@import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained.css");
+
+window:backdrop menubar menuitem label  {
+	border-bottom-color: rgb(46,52,54);
+	border-left-color: rgb(46,52,54);
+	border-right-color: rgb(46,52,54);
+	caret-color: rgb(46,52,54);
+	color: rgb(46,52,54);
+}
+window:backdrop treeview {
+	background-color: rgb(255, 255, 255);
+	border-bottom-color: rgb(0,0,0);
+	border-left-color: rgb(151,154,155);
+	border-top-color: rgb(246,245,244);
+	color: rgb(0,0,0);
+}
+
+window:backdrop treeview header button {
+	background-color: rgb(255,255,255);
+	border-bottom-color: rgb(215,210,206);
+	border-left-color: rgb(215,210,206);
+	border-right-color: rgb(215,210,206);
+	border-top-color: rgb(215,210,206);
+	color: rgb(151,154,155);
+} 
+window:backdrop treeview header button box widget {
+	caret-color: rgb(13,13,13);
+	color: rgb(151,154,155);
+} 
+
+window:backdrop treeview header button box widget label {
+	background-color: rgba(0,0,0,0);
+	border-bottom-color: rgb(151,154,155);
+	border-left-color: rgb(151,154,155);
+	border-right-color: rgb(151,154,155);
+	border-top-color: rgb(151,154,155);
+	caret-color: rgb(151,154,155);
+	color: rgb(151,154,155);
+} 

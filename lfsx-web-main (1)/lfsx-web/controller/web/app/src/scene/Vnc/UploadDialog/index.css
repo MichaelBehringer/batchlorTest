@@ -1,0 +1,81 @@
+#drop-container {
+	width: auto;
+	height: 70%;
+	max-height: 55vh;
+	margin: 30px;
+	margin-top: 0;
+
+	background: #e9f7d4;
+	border: 1px dashed rgb(128, 128, 128);
+	border-radius: 4px;
+	transition: 0.5s;
+
+	cursor: pointer;
+	overflow-y: scroll;
+}
+
+#drop-container:hover {
+	background: #d0ddbd;
+}
+#drop-container[data-dragging="true"] {
+	background: #d0ddbd;
+}
+
+.drop-info {
+	text-align: center;
+	top: calc(50% - 60px);
+	position: relative;
+
+	font-size: 1.2em;
+	
+	margin: 30px;
+
+	/* Center text beside image */
+	display: flex;
+	justify-content: center;
+	align-items:center;
+
+	/* Don't block events for drop zone */
+	pointer-events: none;
+}
+
+div.file {
+	margin: 8px;
+	padding: 6px;
+	transition: 0.5s ease-in-out;
+	transform: skew(-5deg);
+
+	/** This is a bit complicated. No transition is supported for the background property... */
+	--upload-undone: rgb(165, 165, 165);
+	--upload-done: rgb(119, 199, 83);
+	background: linear-gradient(to right, var(--upload-done) 50%, var(--upload-undone) 52%, var(--upload-undone) 100%);
+	background-repeat: repeat-x;
+	background-size: 200%;
+	background-position: 100%;
+
+	border: 1px solid white;
+	border-radius: 7px;
+}
+/** States for progress. We can't do this directly in react without using some effect library */
+div.file[data-progress="1"] {
+	background-position: 80%;
+}
+div.file[data-progress="2"] {
+	background-position: 60%;
+}
+div.file[data-progress="3"] {
+	background-position: 40%;
+}
+div.file[data-progress="4"] {
+	background-position: 20%;
+}
+div.file[data-progress="5"] {
+	background-position: 0%;
+}
+
+div.file span.file-prop {
+	display: inline-block;
+	overflow: hidden;
+	white-space: nowrap;
+	margin-left: 10px;
+}

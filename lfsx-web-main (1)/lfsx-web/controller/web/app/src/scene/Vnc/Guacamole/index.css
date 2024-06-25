@@ -1,0 +1,16 @@
+div.vnc canvas {
+	z-index: 5 !important;
+}
+
+/* Center the loading animation */
+div.loading-wrapper {
+	z-index: 6;
+
+	position: absolute; 
+	left: calc(50% - 290px);
+	top: calc(50% - 180px);
+}
+
+#gua-display {
+	overflow: hidden;
+}

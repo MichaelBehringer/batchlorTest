@@ -1,0 +1,13 @@
+{
+	"search.exclude": {
+	  "controller/web/app/src/components/NoVNC": true,
+	  "**/node_modules": true,
+	},
+	"yaml.schemas": {
+		"kubernetes": [
+			"deploy*.yaml",
+			"OpenShift/*.yaml"
+		]
+	}
+}
+  

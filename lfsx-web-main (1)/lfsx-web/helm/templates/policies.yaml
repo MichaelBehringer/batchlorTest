@@ -1,0 +1,121 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include ".fullname" . }}-controller
+spec:
+  endpointSelector:
+    matchLabels:
+      app: {{ include ".fullname" . }}-controller
+  ingress:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - {{ include ".fullname" . }}-lfs
+      toPorts:
+        - ports:
+            - port: "4020"
+    - fromEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "4020"
+              protocol: "TCP"
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            app: {{ include ".fullname" . }}-lfs
+      toPorts:
+        - ports:
+            - port: "4021"
+              protocol: TCP
+        - ports:
+            - port: "8888"
+              protocol: TCP
+        - ports:
+            - port: "5910"
+              protocol: TCP
+        - ports:
+            - port: "4822"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: webapi.hama.com
+      toPorts:
+        - ports:
+            - port: "443"
+    - toEntities:
+      - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "6443"
+            protocol: TCP
+          - port: "443"
+            protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include ".fullname" . }}-lfs
+spec:
+  endpointSelector:
+    matchLabels:
+      app: {{ include ".fullname" . }}-lfs
+  ingress:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - {{ include ".fullname" . }}-controller
+      toPorts:
+        - ports:
+            - port: "8888"
+              protocol: TCP
+            - port: "5910"
+              protocol: TCP
+            - port: "4021"
+              protocol: TCP
+            - port: "4822"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toFQDNs:
+        - matchName: webapi.hama.com
+      toPorts:
+        - ports:
+            - port: "443"
+    - toEndpoints:
+        - matchLabels:
+            app: {{ include ".fullname" . }}-controller
+      toPorts:
+        - ports:
+            - port: "4020"
+    - toCIDRSet:
+      - cidr: 172.16.0.0/12
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"

@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {{ if .IsPlaceholder }}
+  name: {{.BaseName}}-lfs-placeholder-{{.Username}}
+  {{ else }}
+  name: {{.BaseName}}-lfs-{{.Username}}-{{.Db}}
+  {{ end }}
+  namespace: {{ .Namespace }}
+  labels:
+    app: {{.BaseName}}-lfs
+    user: "{{.Username}}"
+    db: "{{.Db}}"
+    appGeneric: "lfs"
+    imageVersion: "{{.ImageVersion}}"
+spec:
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 0
+  ttlSecondsAfterFinished: 0
+  template:
+    metadata:
+      name: {{.BaseName}}-lfs-{{.Username}}-{{.Db}}
+      namespace: {{ .Namespace }}
+      labels:
+        app: {{.BaseName}}-lfs
+        user: "{{.Username}}"
+        db: "{{.Db}}"
+        appGeneric: "lfs"
+        {{ if .IsPlaceholder }}
+        placeholder: "true"
+        {{ else }}
+        placeholder: "false"
+        {{ end }}
+        imageVersion: "{{.ImageVersion}}"
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: "{{.BaseName}}-lfs-{{.Username}}-{{.Db}}"
+          env:
+            - name: APP_LFS_SERVICE_ENDPOINT
+              value: "{{.LfsServiceEndpoint}}"
+            - name: APP_LFS_CONFIG
+              value: "{{.LfsConfigDir}}"
+
+          image: "{{.Image}}"
+          imagePullPolicy: 'Always'
+
+          ports: []
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 800Mi
+            limits:
+              cpu: 2500m
+              memory: 1700Mi
+
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 4021
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/readyz
+              port: 4021
+            initialDelaySeconds: 2
+            periodSeconds: 1
+
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+              # Required for apps like firefox
+              add:
+                - SYS_CHROOT
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false

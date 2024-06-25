@@ -1,0 +1,27 @@
+{{- if .Values.httpProxy.enabled }}
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: {{ include ".fullname" . }}
+spec:
+  virtualhost:
+    fqdn: {{ .Values.httpProxy.virtualhost.fqdn }}
+    tls:
+      secretName: {{ .Values.httpProxy.virtualhost.tlsSecretName }}
+  routes:
+    - conditions:
+      - prefix: /
+      services:
+        - name: {{ include ".fullname" . }}-service
+          port: 4020
+      loadBalancerPolicy:
+        strategy: RequestHash
+        requestHashPolicies:
+        - queryParameterHashOptions:
+            parameterName: userIdentifier
+          # When value was found use only this value for hash
+          terminal: true
+        - hashSourceIP: true
+      enableWebsockets: true
+  ingressClassName: {{ .Values.httpProxy.ingressClassName }}
+{{- end }}

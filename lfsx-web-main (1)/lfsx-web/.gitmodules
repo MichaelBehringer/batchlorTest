@@ -1,0 +1,6 @@
+[submodule "controller/web/app/src/components/NoVNC"]
+	path = controller/web/app/src/components/NoVNC
+	url = https://github.com/novnc/noVNC.git
+[submodule "guacamole-server"]
+	path = guacamole-server
+	url = https://github.com/apache/guacamole-server

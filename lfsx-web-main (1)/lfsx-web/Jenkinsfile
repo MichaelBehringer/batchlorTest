@@ -1,0 +1,296 @@
+// Base class containing the git configuration
+class Configuration {
+
+	// (Long) Hash value of the current commit
+	String commitHash;
+	// Name of the current Branch
+	String branch;
+
+	// The last available tag in the git commit history
+	String lastTag;
+	// Tag value of the current commit
+	String[] currentTags;
+
+	// Tag used to update the helm values
+	String updateTag = ""
+    String updateFile = ""
+    String updateFile2 = ""
+
+	// Branch of the LFS.X to build on
+	String lfsxBranch = ""
+	Boolean onlyBuildLfs
+	// API URL to get the last version number
+	String lfsxBuildAPI = ""
+	// Version number of the LFS.X
+	String lfsxVersion = ""
+	// Tag used to tag the LFS.X image
+	String[] tagsLfs = ""
+
+	// Tags returns the tags to apply for the build container image.
+	def Tags() {
+		ArrayList rtc = []
+
+		// Building on master branch
+		if (branch == "master" || branch == "main") {
+			// When building on the master branch always use the provided tags for the current commit
+			if (currentTags != null) rtc.addAll(currentTags)
+			
+			// The master branch is used for "release candidate" and "production build"
+			currentTags.each {
+				if (it.contains("-rc.")) {
+					// Update tag "latest-rc" because a tag like "v1.10.0-rc.1" was provided 
+					rtc << "rc-latest"
+					updateTag = it
+					updateFile = "rc"
+				} else {
+					// The tag is not a rc -> new "production" release
+					rtc << "latest"
+					updateTag  = it
+                    updateFile = "main"
+                    // Also update the rc when "main" was updated
+                    updateFile2 = "rc"
+				}
+			}
+
+			// Also update file if only the LFS.X should be updated
+			if ( (currentTags == null || currentTags.size() == 0) && onlyBuildLfs && lfsxBranch != null) {
+				updateFile = "main"
+				updateFile2 = "rc"
+				updateTag = lfsxBranch.replaceAll("/", "-")
+			}
+
+			// Also push a tag with the current commit hash
+			rtc << "main-" + commitHash
+		} else if (branch == "snapshot") {
+			// For security reasons the tags on the snapshot branch are not used for tagging
+			rtc << "snapshot-latest"
+
+			// Otherwise only push a tag with the current commit hash
+			rtc << "snapshot-" + commitHash
+
+			updateTag =  "snapshot-" + commitHash
+			updateFile = "snapshot"
+		} else {
+			currentBuild.result = 'ABORTED'
+			echo "Received not supported branch for building container image: '" + branch + "'"
+		}
+
+		return rtc
+	}
+
+	// Returns the current version of the program that should be used during building
+	String Version() {
+		if (branch == "master" || branch == "main") {
+			return lastTag
+		} else {
+			// Otherwiese add a "-snapshot" to the last tagged version
+			return lastTag.replace("(?<=v\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}).*", "") + "-dev"
+		}
+	}
+
+	// SetLFSX applies the LFS.X specific configuration options
+	String SetLFSX() {
+		lfsxBuildAPI = "https://jenkins.hama.de/job"
+		if (branch == "master" || branch == "main") {
+			lfsxBranch = "development/container_squash"
+			lfsxBuildAPI += "/LFS-master-build-jdk11" 
+		} else if (branch == "snapshot") {
+			lfsxBranch = "development/container_squash"
+			//lfsxBuildAPI += "/LFS-snapshot-build" 
+			lfsxBuildAPI += "/LFS-snapshot-build" 
+		}
+		lfsxBuildAPI += "/lastBuild/api/json"
+	}
+
+}
+
+// Global variables
+def Configuration gitConfig = new Configuration()
+def String VERSION
+
+// App used for helm identification and commit message
+def String APP_NAME = "lfsx-web"
+
+pipeline {
+    agent any
+
+	parameters {
+		booleanParam(name: 'ONLY_BUILD_LFS', defaultValue: false, description: "Only build the LFS container and deploy it. The controller and all connections won't be killed")
+		string(name: 'VERSION_NUMBER', defaultValue: '', description: 'Version number of the LFS to build. By default the version of the last LFS.X build is used')
+	}
+
+    stages {
+
+        stage('Initializing variables') {
+            steps {
+                script {
+					// Configure git project
+					gitConfig.commitHash = "${env.GIT_COMMIT}"
+					gitConfig.branch = "${env.GIT_BRANCH}"
+					gitConfig.onlyBuildLfs = params.ONLY_BUILD_LFS
+					gitConfig.SetLFSX()
+
+					currentTags = sh (
+						script: 'git tag --points-at HEAD',
+						returnStdout: true
+					)
+					if (currentTags != "") {
+						gitConfig.currentTags = currentTags.split("\n")
+					}
+
+					gitConfig.lastTag = sh (
+						script: 'git describe --tags --abbrev=0',
+						returnStdout: true
+					).replace("\n", "")
+
+					// Get LFS branch, URL und version
+					if (params.VERSION_NUMBER != "") {
+						gitConfig.lfsxVersion = params.VERSION_NUMBER
+					} else {
+						withEnv([ "url=${gitConfig.lfsxBuildAPI}"  ]) {
+							withCredentials([
+								usernamePassword(credentialsId: 'JENKINS_API_USER', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')
+							]) {
+								gitConfig.lfsxVersion = sh (
+									script: 'curl -s -u "$USERNAME:$PASSWORD" --insecure "$url" | jq -r \'.actions[]?.parameters[]? | select(.name=="VERSION_NUMBER") | .value\'',
+									returnStdout: true
+								).replace("\n", "")
+								echo "Got LFS.X version from last build: '${gitConfig.lfsxVersion}'"
+							}
+						}
+					}
+
+					// Apply the current version code
+					VERSION = gitConfig.Version()
+					sh "echo ${VERSION} > VERSION"
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+
+				script {
+					echo "Building Version '${VERSION}' and tagging it with '${gitConfig.Tags()}'"
+					if (params.ONLY_BUILD_LFS) {
+						echo "Only building LFS.X"
+					}
+
+					withCredentials([
+						file(credentialsId: 'GITEA_ARGOCD_API_TOKEN', variable: 'giteaApiToken'),
+						file(credentialsId: 'GITEA_ARGOCD_SSH_KEY', variable: 'giteaSshKeyVar')
+					]) {
+
+						// Get the last commit number of the LFS.X
+						String lfsLastCommit = ""
+						withEnv([ "lfsBranch=${gitConfig.lfsxBranch}" ]) {
+							lfsLastCommit = sh (
+								script: 'curl "https://notNeeded:"$(cat ${giteaApiToken})"@gitea.hama.de/api/v1/repos/LFS/hama.java.lfs/commits?sha=""$lfsBranch""&limit=1" | jq .[0].sha',
+								returnStdout: true
+							).replace("\n", "")
+						}
+
+						echo "Using LFS commit ID for building: ${lfsLastCommit}"
+
+						withEnv([ "version=${VERSION}", "commit=${gitConfig.commitHash}", "lfsLastCommit=${lfsLastCommit}", "lfsVersion=${gitConfig.lfsxVersion}", "lfsBranch=${gitConfig.lfsxBranch}"  ]) {
+
+							// Build the lfs
+							sh 'buildah bud --isolation chroot --layers \
+									--secret id=giteaApiKey,src=${giteaApiToken} --secret id=giteaSshKey,src=${giteaSshKeyVar} \
+									--build-arg lfsLastCommitHash=${lfsLastCommit} --build-arg VERSION="${version}" \
+									--build-arg LFS_RELEASE=${lfsVersion} \
+									--build-arg LFS_RELEASE_BRANCH=${lfsBranch} \
+									--tag=hama.de/lfsx-web-lfs:jenkins-${commit} -f lfs/docker/Dockerfile .'
+
+							// Build the controller
+							if (params.ONLY_BUILD_LFS != true) {
+								sh 'buildah bud --isolation chroot --layers \
+										--secret id=giteaSshKey,src=${giteaSshKeyVar} \
+										--build-arg VERSION="${version}" \
+										--tag=hama.de/lfsx-web-controller:jenkins-${commit} -f controller/docker/Dockerfile .'
+							}
+						}
+					}
+				}
+               
+            }
+        }
+
+        stage('Publish') {
+            steps {
+                script {
+					withCredentials([ file(credentialsId: 'NEXUS3_CONTAINER_REGISTRY_ADMIN', variable: 'authFile') ]) {
+
+						// Publish controller
+						if (params.ONLY_BUILD_LFS != true) {
+							gitConfig.Tags().each {
+								sh "buildah push hama.de/lfsx-web-controller:jenkins-${gitConfig.commitHash} docker://containers.hama.de/registry-hama/lfsx-web-controller:${it}"
+							}
+						}
+
+						// Publish LFS.X
+						[*gitConfig.Tags(), gitConfig.lfsxBranch.replaceAll("/", "-")].each {
+							sh "buildah push hama.de/lfsx-web-lfs:jenkins-${gitConfig.commitHash} docker://containers.hama.de/registry-hama/lfsx-web-lfs:${gitConfig.lfsxVersion}-${it}"
+						}
+					}
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "Updating git configuration dirctory (${APP_NAME}/${gitConfig.updateFile}.yaml) with tag [${gitConfig.updateTag}]"
+                
+                script {
+
+					def String url = "gitea.hama.de/api/v1/repos/de03710/kubernetes-config/contents/argo-apps/" + APP_NAME + "/" + gitConfig.updateFile + ".yaml"
+					def String url2 = "gitea.hama.de/api/v1/repos/de03710/kubernetes-config/contents/argo-apps/" + APP_NAME + "/" + gitConfig.updateFile2 + ".yaml"
+
+					def controllerTagRegex = "tag"
+					// Don't replace version in file
+					if (params.ONLY_BUILD_LFS == true) {
+						controllerTagRegex = "tagThatDoesntMatchAnything"
+					}
+
+					echo "Using git URL '${url}'"
+					withCredentials([ file(credentialsId: 'GITEA_ARGOCD_API_TOKEN', variable: 'gitApiKey') ]) {
+						withEnv([ "url=${url}", "url2=${url2}", "tag=${gitConfig.updateTag}", "file=${gitConfig.updateFile}", "app=${APP_NAME}", "controllerTagRegex=${controllerTagRegex}", "lfsVersion=${gitConfig.lfsxVersion}" ]) {
+							// Exit when one command does fail in pipe
+                            sh "set -e && set -o pipefail"
+
+							if (gitConfig.updateFile != "") {
+                                sh 'curl -s "https://notNeeded:$(cat ${gitApiKey})@${url}" | jq -r .content | base64 --decode > tmp_values.yaml'
+                                sh 'curl -s --fail "https://notNeeded:$(cat ${gitApiKey})@${url}" -X PUT -H "Content-Type: application/json" -d \
+                                    	\'{ "content": "\'"$(cat tmp_values.yaml | sed -e \'s/\'$controllerTagRegex\': ".*"/tag: "\'$tag\'"/g\' \
+										| sed -e \'s/tagLFS: ".*"/tagLFS: "\'$lfsVersion-$tag\'"/g\' \
+										| base64 -w 0)"\'", "message": "[CI] Update image tag for \'"$app-$file"\'", \
+                                            "sha": "\'$(git hash-object tmp_values.yaml | tr -d "\\n")\'" }\' '
+							}
+
+							if (gitConfig.updateFile2 != "") {
+                                sh 'curl -s "https://notNeeded:$(cat ${gitApiKey})@${url2}" | jq -r .content | base64 --decode > tmp_values.yaml'
+                                sh 'curl -s --fail "https://notNeeded:$(cat ${gitApiKey})@${url2}" -X PUT -H "Content-Type: application/json" -d \
+                                    	\'{ "content": "\'"$(cat tmp_values.yaml | sed -e \'s/\'$controllerTagRegex\': ".*"/tag: "\'$tag\'"/g\' \
+										| sed -e \'s/tagLFS: ".*"/tagLFS: "\'$lfsVersion-$tag\'"/g\' \
+										| base64 -w 0)"\'", "message": "[CI] Update image tag for \'"$app-$file"\'", \
+                                            "sha": "\'$(git hash-object tmp_values.yaml | tr -d "\\n")\'" }\' '
+							}
+						}
+					}
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            sh 'echo Build finished'
+        }
+
+        // Clean after build
+        cleanup {
+            cleanWs()
+        }
+    }
+}

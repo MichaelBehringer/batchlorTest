@@ -1,0 +1,37 @@
+#login-mask {
+	padding: 10px;
+	max-width: 500px;
+
+	top: 20vh;
+	left: calc(50% - 250px);
+	position: relative;
+
+	box-shadow: 0 1px 1px 0 rgba(60,64,67,.08),0 1px 5px 1px rgba(60,64,67,.16);
+}
+
+#login-mask .settings {
+	position: absolute;
+	width: 1.7rem;
+	top: .7rem;
+	right: .9rem;
+	cursor: pointer;
+}
+
+form.wrapper {
+	display: flex;
+	flex-direction: column;
+	padding: 8px;
+}
+
+div.input-wrapper {
+	margin: 7px;
+}
+
+#login-mask select[name="db"] {
+	margin: 5px;
+	width: 100px;
+}
+
+#login-mask input[type="submit"] {
+	margin: 10px;
+}

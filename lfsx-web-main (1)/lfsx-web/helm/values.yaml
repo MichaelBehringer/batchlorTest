@@ -1,0 +1,51 @@
+# The number of controller instances to deploy
+replicaCount: 1
+
+# Limit ressources for the controller
+resources:
+  requests:
+    memory: "250Mi"
+    cpu: "300m"
+  limits:
+    memory: "400Mi"
+    cpu: "600m"
+
+# Overrides the full name of the chart
+fullnameOverride: ""
+
+image:
+  # Repository and base name to download the image from (for '-lfs' and '-controller')
+  repository: containers.hama.de/registry-hama/lfsx-web
+  pullPolicy: IfNotPresent
+  # Override the image tag whose default is the chart appVersion
+  tag: ""
+  # Override the image tag for the LFS container (extra tag to not restart the controller and terminate it)
+  tagLFS: ""
+
+# Configuration details for the login services
+login:
+  # The base URL of the login services
+  url: https://webapi.hama.com/lfs-login-test/
+  # Name of the set cookie
+  jwtName: cookie-java-lfs
+  # The secret name where the private key is stored for decrypting the JWT token. It has to contain
+  # a key 'login-jwt-key' with the value of the JWTs private key
+  privateKey: lfs-controller-secrets
+
+# Generic configuration options
+config:
+  # Minimum log level for printing to the console. Possible options are trace,debug,info,warn,error
+  logLevel: info
+  # Weather to run the app in production mode
+  production: true
+
+
+# Deploy an httpProxy (Contour) to access the application
+httpProxy:
+  enabled: false
+  virtualhost:
+    fqdn: "example.com"
+    tlsSecretName: "namespace/name"
+  
+  # The name of the ingress gateway class to append this route
+  ingressClassName: ""

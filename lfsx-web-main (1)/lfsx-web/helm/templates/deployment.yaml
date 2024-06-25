@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include ".fullname" . }}-controller-config
+data:
+  lfs-image.txt: |
+    {{ .Values.image.repository }}-lfs:{{ .Values.image.tagLFS | default .Values.image.tag | default .Chart.AppVersion }}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include ".fullname" . }}-controller
+  labels:
+    app: {{ include ".fullname" . }}-controller
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include ".fullname" . }}-controller
+  template:
+    metadata:
+      labels:
+        app: {{ include ".fullname" . }}-controller
+    spec:
+      containers:
+      - name: {{ include ".fullname" . }}-controller
+        image: "{{ .Values.image.repository }}-controller:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 4020
+          name: http
+        env:
+          - name: "KUBERNETES_NAMESPACE"
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: "APP_LFS_SERVICE_ENDPOINT"
+            value: "{{ .Values.login.url }}"
+          - name: "APP_LFS_SERVICE_ENDPOINT_JWT_NAME"
+            value: "{{ .Values.login.jwtName }}"
+          - name: "APP_PRODUCTION"
+            value: "{{ .Values.config.production }}"
+          - name: "APP_LFS_IMAGE_NAME_FILE"
+            value: "/mnt/config/lfs-image.txt"
+          - name: "LOGGER_PRINTLEVEL"
+            value: {{ .Values.config.logLevel }}
+          - name: "APP_JWT_FILE"
+            value: "/mnt/secrets/lfs-services_jwt_token"
+          - name: "BASE_APP_NAME"
+            value: {{ include ".fullname" . }}
+
+        # Liveness and readiness probe
+        livenessProbe:
+          failureThreshold: 2
+          initialDelaySeconds: 10
+          periodSeconds: 4
+          successThreshold: 1
+          httpGet:
+            path: /api/healthz
+            port: 4020
+          timeoutSeconds: 2
+        readinessProbe:
+          failureThreshold: 2
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 2
+          httpGet:
+            path: /api/readyz
+            port: 4020
+          timeoutSeconds: 2
+
+        # Run the app securely
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - all
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+
+        volumeMounts:
+        # Mount all secrets into one folder
+        - name: secrets  
+          mountPath: /mnt/secrets/
+          readOnly: true
+        - name: config-volume
+          mountPath: /mnt/config/
+          readOnly: true
+
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        
+      serviceAccount: {{ include ".fullname" . }}-controller
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{ include ".fullname" . }}-controller-config
+          items:
+          - key: lfs-image.txt
+            path: lfs-image.txt
+      - name: secrets
+        secret:
+          secretName: {{ .Values.login.privateKey }}
+          items:
+          - key: login-jwt-key
+            path: lfs-services_jwt_token

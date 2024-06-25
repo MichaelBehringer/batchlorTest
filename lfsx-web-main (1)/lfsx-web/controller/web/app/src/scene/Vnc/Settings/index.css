@@ -1,0 +1,8 @@
+label.grid {
+	margin-top: 10px;
+	margin-left: 4px;
+
+	display: grid;
+	grid-template-columns: 130px auto;
+	gap: 10px;
+}

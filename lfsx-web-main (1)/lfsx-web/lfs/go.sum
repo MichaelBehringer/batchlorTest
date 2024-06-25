@@ -1,0 +1,10 @@
+gitea.hama.de/LFS/go-logger v1.1.2 h1:qMj/cy+OiIkc/dPalZjOBon1XpD3DDdeXf97VDP+sUA=
+gitea.hama.de/LFS/go-logger v1.1.2/go.mod h1:1+3q8/nOTx2aQTKcrkf9GgCU23sS92VCGVOWjWD77vw=
+gitea.hama.de/LFS/go-webserver v1.1.1 h1:9V6DqtsDD76JrJI1PeuDa8P4jYtsHp611b0qBRC9miw=
+gitea.hama.de/LFS/go-webserver v1.1.1/go.mod h1:eQJUFMeL7PVpNNO7AHhy80HTjD21akCxr1+sbPWo66A=
+github.com/go-chi/chi v1.5.4 h1:QHdzF2szwjqVV4wmByUnTcsbIg7UGaQ0tPF2t5GcAIs=
+github.com/go-chi/chi v1.5.4/go.mod h1:uaf8YgoFazUOkPBG7fxPftUylNumIev9awIWOENIuEg=
+github.com/justinas/nosurf v1.1.1 h1:92Aw44hjSK4MxJeMSyDa7jwuI9GR2J/JCQiaKvXXSlk=
+github.com/justinas/nosurf v1.1.1/go.mod h1:ALpWdSbuNGy2lZWtyXdjkYv4edL23oSEgfBT1gPJ5BQ=
+golang.org/x/sys v0.8.0 h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=
+golang.org/x/sys v0.8.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

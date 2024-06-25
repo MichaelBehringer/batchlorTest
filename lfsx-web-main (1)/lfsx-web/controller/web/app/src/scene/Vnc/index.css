@@ -1,0 +1,51 @@
+/* Center the loading animation */
+div.loading-wrapper {
+
+	position: absolute; 
+	left: calc(50% - 290px);
+	top: calc(50% - 180px);
+}
+
+#popup-container {
+	position: fixed;
+	z-index: 10;
+
+	transition: 0.4s ease-in-out;
+	transform: translateX(0);
+
+	height: 32px;
+	width: 200px;
+	left: calc(50% - 100px);
+	top: -29px;
+
+	padding: 2px;
+	padding-left: 6px;
+	padding-right: 6px;
+
+	display: flex;
+	border: 0.5 px solid rgba(67, 160, 197, 0.5);
+	background: rgba(11, 76, 151, 0.3);
+
+	border: none;
+	border-radius: 3px;
+}
+
+#popup-container:hover {
+	top: -0px;
+	border: 2px solid rgb(67, 160, 197);
+	border-radius: 5px;
+	background: rgba(16, 71, 134, 0.95);
+}
+
+img.toolbar-item {
+	padding: 3px;
+	opacity: 0.75;
+	transition: 0.2s ease-in-out;
+}
+img.toolbar-item:hover {
+	opacity: 1;
+}
+
+#paste-field {
+	position: absolute;
+}
